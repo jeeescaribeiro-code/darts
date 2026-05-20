@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>badMath — Pontuação para Dardos</title>
+<meta name="description" content="badMath: sistema competitivo de dardos">
+<meta name="theme-color" content="#FF4FBF">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --pink:    #FF4FBF;
+  --cyan:    #00F0FF;
+  --lime:    #B8FF3A;
+  --orange:  #FF7A2F;
+  --purple:  #9B5DE5;
+  --bg:      #0A0A12;
+  --surface: #12121F;
+  --surface2:#1A1A2E;
+  --border:  rgba(255,255,255,0.08);
+  --text:    #F0EEF8;
+  --muted:   rgba(240,238,248,0.45);
+  --radius:  16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* animated blobs */
+.blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+  animation: drift 14s ease-in-out infinite alternate;
+}
+.blob-1 { width:500px;height:500px;background:var(--pink);opacity:.10;top:-150px;left:-150px; }
+.blob-2 { width:400px;height:400px;background:var(--cyan);opacity:.08;bottom:-100px;right:-100px;animation-delay:-7s; }
+.blob-3 { width:300px;height:300px;background:var(--purple);opacity:.09;top:40%;left:50%;animation-delay:-3s; }
+
+@keyframes drift {
+  from { transform: translate(0,0) scale(1); }
+  to   { transform: translate(40px,30px) scale(1.08); }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+/* header */
+.header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.header-badge {
+  display: inline-block;
+  background: var(--pink);
+  color: #0A0A12;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 100px;
+  margin-bottom: 12px;
+}
+.header h1 {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(100deg, var(--pink) 0%, var(--cyan) 55%, var(--lime) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 8px;
+  font-family: 'DM Mono', monospace;
+}
+
+/* card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* setup section */
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+.setup-grid label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+input[type="number"], input[type="text"] {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 15px;
+  outline: none;
+  transition: border .2s;
+}
+input:focus { border-color: var(--pink); }
+input::placeholder { color: var(--muted); }
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .12s, opacity .12s;
+  letter-spacing: .04em;
+}
+button:active { transform: scale(.96); }
+
+.btn-pink   { background: var(--pink); color: #0A0A12; }
+.btn-cyan   { background: var(--cyan); color: #0A0A12; }
+.btn-lime   { background: var(--lime); color: #0A0A12; }
+.btn-orange { background: var(--orange); color: #0A0A12; }
+.btn-ghost  { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: rgba(255,255,255,0.25); }
+
+/* player name inputs */
+#setup-names > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.remove-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+.remove-btn:hover { color: #ff5555; border-color: #ff5555; }
+
+/* round indicator */
+.round-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.round-dots {
+  display: flex;
+  gap: 8px;
+}
+.dot {
+  width: 28px;
+  height: 8px;
+  border-radius: 100px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: background .3s, transform .3s;
+}
+.dot.active { background: var(--pink); transform: scaleX(1.2); }
+.dot.done   { background: var(--lime); }
+.round-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* players grid */
+.players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.player-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color .3s;
+  position: relative;
+  overflow: hidden;
+}
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.player-card:nth-child(1)::before { background: var(--pink); }
+.player-card:nth-child(2)::before { background: var(--cyan); }
+.player-card:nth-child(3)::before { background: var(--lime); }
+.player-card:nth-child(4)::before { background: var(--orange); }
+.player-card:nth-child(5)::before { background: var(--purple); }
+.player-card:nth-child(6)::before { background: var(--pink); }
+
+.player-card.leader { border-color: rgba(255,79,191,0.4); }
+
+.player-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.player-score {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  transition: color .3s, transform .2s;
+}
+.player-score.danger { color: var(--orange); }
+.player-score.good   { color: var(--lime); }
+.player-score.bust   { color: #ff5555; animation: shake .3s; }
+
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-6px)}
+  75%{transform:translateX(6px)}
+}
+
+.score-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.score-input-row input { font-size: 18px; text-align: center; }
+
+.player-stats {
+  display: flex;
+  gap: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.stat-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+.stat-pill span { color: var(--text); font-weight: 500; }
+
+/* win banner */
+.winner-banner {
+  text-align: center;
+  padding: 20px;
+  margin: 12px 0;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(255,79,191,.15), rgba(0,240,255,.1));
+  border: 1px solid rgba(255,79,191,.3);
+  opacity: 0;
+  transform: translateY(10px) scale(.95);
+  transition: opacity .5s, transform .5s;
+  pointer-events: none;
+}
+.winner-banner.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.winner-banner h2 {
+  font-size: clamp(20px, 4vw, 32px);
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--pink), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.winner-banner p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+/* leaderboard */
+.lb-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.lb-item:last-child { border-bottom: none; }
+.lb-rank {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  width: 24px;
+  color: var(--muted);
+}
+.lb-rank.gold   { color: #FFD700; font-weight: 700; }
+.lb-rank.silver { color: #C0C0C0; font-weight: 700; }
+.lb-rank.bronze { color: #CD7F32; font-weight: 700; }
+.lb-name { flex: 1; font-weight: 700; }
+.lb-wins {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 3px 12px;
+  border-radius: 100px;
+  color: var(--lime);
+  font-weight: 500;
+}
+
+/* history log */
+.history-chip {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin: 2px 2px 0 0;
+}
+
+/* section title */
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* empty state */
+.empty {
+  text-align: center;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  padding: 24px;
+}
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="app">
+
+  <div class="header">
+    <div class="header-badge">dardos</div>
+    <h1>contador para dardos</h1>
+    <p>para quem é realmente ruim em matemática</p>
+  </div>
+
+  <!-- Setup -->
+  <div class="card">
+    <p class="section-title">⚙ configuração</p>
+    <div class="setup-grid">
+      <div>
+        <label>Pontuação alvo</label>
+        <input type="number" id="target" placeholder="301" value="301" min="1">
+      </div>
+      <div>
+        <label>Rounds</label>
+        <input type="number" id="rounds" placeholder="3" value="3" min="1" max="9" style="width:80px">
+      </div>
+    </div>
+
+    <div id="setup-names"></div>
+
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn-ghost" onclick="addPlayerInput()">+ Jogador</button>
+      <button class="btn-lime"  onclick="start()">Iniciar</button>
+      <button class="btn-cyan"  onclick="reusePlayers()">Continuar jogadores</button>
+      <button class="btn-orange" onclick="newGame()">Nova partida</button>
+    </div>
+  </div>
+
+  <!-- Round indicator -->
+  <div class="card" id="round-card" style="display:none">
+    <div class="round-track">
+      <div class="round-dots" id="round-dots"></div>
+      <span class="round-label" id="round-label"></span>
+    </div>
+  </div>
+
+  <!-- Win banner -->
+  <div class="winner-banner" id="winner-banner">
+    <h2 id="winner-text"></h2>
+    <p id="winner-sub"></p>
+  </div>
+
+  <!-- Players -->
+  <div class="players" id="game"></div>
+
+  <!-- Leaderboard -->
+  <div class="card" style="margin-top:16px">
+    <p class="section-title">🏆 leaderboard — partidas ganhas</p>
+    <div id="leaderboard"><div class="empty">Inicie uma partida para ver o placar</div></div>
+  </div>
+
+</div>
+
+<script>
+/* ── state ── */
+let players    = [];
+let round      = 1;
+let maxRounds  = 3;
+let target     = 301;
+let lastPlayers = [];
+let gameActive = false;
+
+/* ── init ── */
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  if (players.length) {
+    renderGame();
+  } else {
+    addPlayerInput();
+    addPlayerInput();
+  }
+  updateLeaderboard();
+});
+
+/* ── setup UI ── */
+function addPlayerInput() {
+  const wrap = document.getElementById('setup-names');
+  const idx  = wrap.children.length;
+  const div  = document.createElement('div');
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <input type="text" class="pname" placeholder="Jogador ${idx + 1}">
+    <button class="remove-btn" onclick="removeInput(this)" title="Remover">✕</button>
+  `;
+  wrap.appendChild(div);
+}
+
+function removeInput(btn) {
+  btn.parentElement.remove();
+  // renumber placeholders
+  const inputs = document.querySelectorAll('.pname');
+  inputs.forEach((el, i) => { el.placeholder = `Jogador ${i + 1}`; });
+}
+
+/* ── start game ── */
+function start() {
+  const names  = [...document.querySelectorAll('.pname')].map(el => el.value.trim());
+  if (!names.length || names.every(n => !n)) {
+    alert('Adicione pelo menos um jogador.'); return;
+  }
+  target    = parseInt(document.getElementById('target').value)  || 301;
+  maxRounds = parseInt(document.getElementById('rounds').value)  || 3;
+
+  players = names
+    .filter(n => n)
+    .map((name, idx) => ({
+      id: idx,
+      name,
+      score: target,
+      roundWins: 0,
+      matchWins: (lastPlayers.find(p => p.name === name)?.matchWins ?? 0),
+      history: []
+    }));
+
+  round = 1;
+  gameActive = true;
+  hideBanner();
+  renderGame();
+  saveState();
+}
+
+/* ── reuse players ── */
+function reusePlayers() {
+  if (!lastPlayers.length) { alert('Nenhuma partida anterior encontrada.'); return; }
+  target    = parseInt(document.getElementById('target').value)  || 301;
+  maxRounds = parseInt(document.getElementById('rounds').value)  || 3;
+  players   = lastPlayers.map(p => ({ ...p, score: target, roundWins: 0, history: [] }));
+  round     = 1;
+  gameActive = true;
+  hideBanner();
+  renderGame();
+  saveState();
+}
+
+/* ── new game (reset scores, keep match wins) ── */
+function newGame() {
+  if (!players.length) { alert('Inicie uma partida primeiro.'); return; }
+  if (!confirm('Resetar para nova partida? Vitórias de partida são mantidas.')) return;
+  lastPlayers = deepCopy(players);
+  players.forEach(p => { p.score = target; p.roundWins = 0; p.history = []; });
+  round      = 1;
+  gameActive = true;
+  hideBanner();
+  renderGame();
+  saveState();
+}
+
+/* ── add score ── */
+function addScore(id) {
+  const p   = players.find(x => x.id === id);
+  const inp = document.getElementById(`score-input-${id}`);
+  const val = parseInt(inp.value);
+
+  if (isNaN(val) || val < 0) { inp.value = ''; return; }
+
+  const newScore = p.score - val;
+  if (newScore < 0) {
+    // bust — flash and return
+    const scoreEl = document.getElementById(`score-display-${id}`);
+    if (scoreEl) { scoreEl.classList.add('bust'); setTimeout(() => scoreEl.classList.remove('bust'), 400); }
+    inp.value = '';
+    return;
+  }
+
+  p.history.push({ val, prevScore: p.score });
+  p.score = newScore;
+  inp.value = '';
+
+  if (p.score === 0) {
+    p.roundWins++;
+    if (round >= maxRounds) {
+      finishMatch();
+      return;
+    }
+    round++;
+    players.forEach(x => { x.score = target; x.history = []; });
+  }
+
+  saveState();
+  renderGame();
+}
+
+/* ── undo ── */
+function undoScore(id) {
+  const p    = players.find(x => x.id === id);
+  if (!p.history.length) return;
+  const last = p.history.pop();
+
+  // if we already moved to next round after this player won, undo that too
+  if (last.prevScore === 0 && p.score === target) {
+    // a round was advanced — roll it back
+    round     = Math.max(1, round - 1);
+    players.forEach(x => { if (x.id !== id) x.score = target; });
+    if (p.roundWins > 0) p.roundWins--;
+  }
+
+  p.score = last.prevScore;
+  saveState();
+  renderGame();
+}
+
+/* ── finish match ── */
+function finishMatch() {
+  const winner = [...players].sort((a, b) =>
+    b.roundWins - a.roundWins || a.score - b.score
+  )[0];
+  winner.matchWins++;
+  lastPlayers = deepCopy(players);
+  gameActive  = false;
+
+  document.getElementById('winner-text').textContent = `🎯 ${winner.name} venceu!`;
+  document.getElementById('winner-sub').textContent  =
+    `${winner.roundWins} round${winner.roundWins !== 1 ? 's' : ''} ganho${winner.roundWins !== 1 ? 's' : ''} · próxima partida em 4s…`;
+
+  const banner = document.getElementById('winner-banner');
+  banner.classList.add('show');
+
+  try { document.getElementById('winSound').play(); } catch (_) {}
+
+  saveState();
+  renderGame();
+  updateLeaderboard();
+
+  // auto-reset after 4 s so players are ready for the next match
+  setTimeout(() => {
+    lastPlayers = deepCopy(players);
+    players.forEach(p => { p.score = target; p.roundWins = 0; p.history = []; });
+    round      = 1;
+    gameActive = true;
+    hideBanner();
+    saveState();
+    renderGame();
+  }, 4000);
+}
+
+function hideBanner() {
+  document.getElementById('winner-banner').classList.remove('show');
+}
+
+/* ── render game board ── */
+function renderGame() {
+  const container = document.getElementById('game');
+  container.innerHTML = '';
+
+  if (!players.length) return;
+
+  // show round tracker
+  const roundCard = document.getElementById('round-card');
+  roundCard.style.display = 'block';
+  const dotsEl = document.getElementById('round-dots');
+  dotsEl.innerHTML = '';
+  for (let r = 1; r <= maxRounds; r++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (r < round ? ' done' : r === round ? ' active' : '');
+    dotsEl.appendChild(d);
+  }
+  document.getElementById('round-label').textContent = `Round ${round} de ${maxRounds}`;
+
+  // find leader (lowest score if game active, most roundWins otherwise)
+  const leaderId = gameActive
+    ? players.reduce((a, b) => a.score < b.score ? a : b).id
+    : players.reduce((a, b) => a.roundWins > b.roundWins ? a : b).id;
+
+  players.forEach(p => {
+    const pct       = p.score / target;
+    const scoreClass = p.score === 0 ? 'good' : pct <= 0.2 ? 'danger' : '';
+    const isLeader   = p.id === leaderId && players.length > 1;
+
+    const card = document.createElement('div');
+    card.className = 'player-card' + (isLeader ? ' leader' : '');
+    card.innerHTML = `
+      <div class="player-name">${escHtml(p.name)} ${isLeader ? '⚡' : ''}</div>
+      <div class="player-score ${scoreClass}" id="score-display-${p.id}">${p.score}</div>
+
+      <div class="score-input-row">
+        <input type="number" id="score-input-${p.id}" placeholder="pontos" min="0"
+          onkeydown="if(event.key==='Enter') addScore(${p.id})">
+        <button class="btn-pink" onclick="addScore(${p.id})">✓</button>
+        <button class="btn-ghost" onclick="undoScore(${p.id})" title="Desfazer">↩</button>
+      </div>
+
+      <div class="player-stats">
+        <div class="stat-pill">rounds <span>${p.roundWins}</span></div>
+        <div class="stat-pill">partidas <span>${p.matchWins}</span></div>
+      </div>
+
+      ${p.history.length ? `<div>${p.history.slice(-5).map(h =>
+        `<span class="history-chip">-${h.val}</span>`).join('')}</div>` : ''}
+    `;
+    container.appendChild(card);
+  });
+
+  updateLeaderboard();
+}
+
+/* ── leaderboard ── */
+function updateLeaderboard() {
+  const lb = document.getElementById('leaderboard');
+  const all = [...players, ...lastPlayers.filter(lp =>
+    !players.find(p => p.name === lp.name)
+  )];
+
+  const merged = [];
+  all.forEach(p => {
+    if (!merged.find(m => m.name === p.name)) {
+      const fromPlayers = players.find(pp => pp.name === p.name);
+      merged.push({
+        name: p.name,
+        matchWins: fromPlayers ? fromPlayers.matchWins : p.matchWins
+      });
+    }
+  });
+
+  if (!merged.length) {
+    lb.innerHTML = '<div class="empty">Inicie uma partida para ver o placar</div>';
+    return;
+  }
+
+  const sorted = merged.sort((a, b) => b.matchWins - a.matchWins);
+  const medals = ['gold', 'silver', 'bronze'];
+  lb.innerHTML = sorted.map((p, i) => `
+    <div class="lb-item">
+      <div class="lb-rank ${medals[i] || ''}">#${i + 1}</div>
+      <div class="lb-name">${escHtml(p.name)}</div>
+      <div class="lb-wins">${p.matchWins} ${p.matchWins === 1 ? 'vitória' : 'vitórias'}</div>
+    </div>
+  `).join('');
+}
+
+/* ── persist ── */
+function saveState() {
+  try {
+    localStorage.setItem('badmath_v2', JSON.stringify({ players, round, maxRounds, target, lastPlayers, gameActive }));
+  } catch (_) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('badmath_v2');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    players     = s.players     || [];
+    round       = s.round       || 1;
+    maxRounds   = s.maxRounds   || 3;
+    target      = s.target      || 301;
+    lastPlayers = s.lastPlayers || [];
+    gameActive  = s.gameActive  ?? false;
+
+    // sync inputs
+    document.getElementById('target').value = target;
+    document.getElementById('rounds').value = maxRounds;
+  } catch (_) {}
+}
+
+/* ── utils ── */
+function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
+function escHtml(s)    { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+</script>
+</body>
+</html>
