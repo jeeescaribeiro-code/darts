@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Pontuação para Dardos</title>
+
+<meta name="description" content="badMath: sistema competitivo de dardos">
+
+<meta name="theme-color" content="#00f7ff">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;800&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background: radial-gradient(circle at top,#0b1020,#05060f 60%);
+  color:white;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  width:600px;
+  height:600px;
+  background:#00f7ff;
+  filter:blur(180px);
+  opacity:.12;
+  top:-200px;
+  left:-200px;
+}
+
+.app{
+  max-width:1200px;
+  margin:auto;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  color:#00f7ff;
+  font-weight:800;
+}
+
+.card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  backdrop-filter:blur(14px);
+  border-radius:18px;
+  padding:15px;
+  margin-bottom:15px;
+}
+
+input{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  background:rgba(0,0,0,0.3);
+  color:white;
+  margin:5px 0;
+}
+
+button{
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.primary{background:#748e8f;color:#001018}
+.danger{background:#d6a1b3;color:rgb(0, 0, 0)}
+.warn{background:#c0ad7c;color:black}
+
+.players{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:15px;
+}
+
+.score{
+  font-size:56px;
+  text-align:center;
+  color:#7CFF4F;
+  font-weight:800;
+}
+
+.name{
+  text-align:center;
+  color:#00f7ff;
+  font-weight:700;
+}
+
+.winner{
+  text-align:center;
+  font-size:30px;
+  color:#00ff9d;
+  font-weight:800;
+  margin:15px 0;
+  opacity:0;
+  transform:scale(.6);
+  transition:.5s;
+}
+
+.winner.show{
+  opacity:1;
+  transform:scale(1.2);
+}
+
+.leaderboard-item{
+  display:flex;
+  justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+
+.rank{color:#00f7ff}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<h1>badMath: para quem é realmente ruim em matemática</h1>
+
+<div class="card">
+
+<input id="target" placeholder="Pontuação (301)">
+
+<button class="warn" onclick="addPlayer()">+ Jogador</button>
+<button class="primary" onclick="start()">Iniciar</button>
+<button class="danger" onclick="newGame()">Nova Partida</button>
+<button class="primary" onclick="reusePlayers()">Continuar jogadores</button>
+
+<div id="setup"></div>
+
+</div>
+
+<div class="card">
+<h3 id="round">Round 1 / 3</h3>
+</div>
+
+<div id="game" class="players"></div>
+
+<div id="winner" class="winner"></div>
+
+<div class="card">
+<h3>🏆 Leaderboard (partidas)</h3>
+<div id="leaderboard"></div>
+</div>
+
+<audio id="winSound">
+  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8c1c9d6.mp3?filename=success-1-6297.mp3">
+</audio>
+
+</div>
+
+<script>
+
+let players = [];
+let round = 1;
+let target = 301;
+let lastPlayers = [];
+
+function addPlayer(){
+  const div = document.createElement("div");
+  div.innerHTML = `<input class="pname" placeholder="Nome do jogador">`;
+  document.getElementById("setup").appendChild(div);
+}
+
+function start(){
+
+  target = parseInt(document.getElementById("target").value) || 301;
+
+  const inputs = document.querySelectorAll(".pname");
+
+  players = [];
+
+  inputs.forEach((i,idx)=>{
+
+    players.push({
+      id: idx,
+      name: i.value || "Player " + (idx+1),
+      score: target,
+      roundWins: 0,
+      matchWins: 0,
+      history: []
+    });
+
+  });
+
+  round = 1;
+
+  render();
+  save();
+}
+
+function reusePlayers(){
+
+  if(lastPlayers.length === 0){
+    alert("Nenhuma partida anterior");
+    return;
+  }
+
+  players = lastPlayers.map(p => ({
+    ...p,
+    score: target,
+    roundWins: 0,
+    history: []
+  }));
+
+  round = 1;
+  render();
+}
+
+function render(){
+
+  document.getElementById("round").innerText =
+    `Round ${round} / 3`;
+
+  const game = document.getElementById("game");
+  game.innerHTML = "";
+
+  players.forEach(p => {
+
+    game.innerHTML += `
+    <div class="card">
+      <div class="name">${p.name}</div>
+      <div class="score">${p.score}</div>
+
+      <input id="i${p.id}" type="number">
+
+      <button class="primary" onclick="add(${p.id})">Add</button>
+      <button class="danger" onclick="undo(${p.id})">Undo</button>
+
+      <div>Rounds ganhos: ${p.roundWins}</div>
+      <div>Partidas: ${p.matchWins}</div>
+    </div>`;
+  });
+
+  updateLeaderboard();
+}
+
+function add(id){
+
+  const p = players[id];
+  const val = parseInt(document.getElementById("i"+id).value);
+
+  if(isNaN(val)) return;
+  if(p.score - val < 0) return;
+
+  p.score -= val;
+  p.history.push(val);
+
+  if(p.score === 0){
+
+    p.roundWins++;
+
+    if(round >= 3){
+      finish();
+      return;
+    }
+
+    round++;
+
+    players.forEach(x => x.score = target);
+  }
+
+  save();
+  render();
+}
+
+function undo(id){
+
+  const p = players[id];
+  const last = p.history.pop();
+
+  if(!last) return;
+
+  p.score += last;
+  render();
+}
+
+function finish(){
+
+  const winner = [...players]
+    .sort((a,b)=>b.roundWins-a.roundWins)[0];
+
+  winner.matchWins++;
+
+  lastPlayers = JSON.parse(JSON.stringify(players));
+
+  document.getElementById("winner").innerText =
+    `🏆 ${winner.name} venceu a partida!`;
+
+  document.getElementById("winner").classList.add("show");
+
+  document.getElementById("winSound").play();
+
+  setTimeout(()=> {
+    document.getElementById("winner").classList.remove("show");
+  }, 4000);
+
+}
+
+function updateLeaderboard(){
+
+  const sorted =
+    [...players].sort((a,b)=>b.matchWins-a.matchWins);
+
+  document.getElementById("leaderboard").innerHTML =
+    sorted.map((p,i)=>`
+
+      <div class="leaderboard-item">
+        <span class="rank">#${i+1}</span>
+        <span>${p.name}</span>
+        <span>🏆 ${p.matchWins}</span>
+      </div>
+
+    `).join("");
+}
+
+function newGame(){
+
+  if(!confirm("Nova partida?")) return;
+
+  players.forEach(p=>{
+    p.score = target;
+    p.roundWins = 0;
+    p.history = [];
+  });
+
+  round = 1;
+
+  document.getElementById("winner").innerText = "";
+  document.getElementById("winner").classList.remove("show");
+
+  render();
+}
+
+function save(){
+
+  localStorage.setItem("badmath", JSON.stringify({
+    players,
+    round,
+    target
+  }));
+
+}
+
+</script>
+
+</body>
+</html>
